@@ -7,6 +7,7 @@ import os
 import argparse
 import subprocess
 import sys
+import re
 
 from xdg.Exceptions import ParsingError
 from xdg.BaseDirectory import xdg_state_home
@@ -260,10 +261,17 @@ def copy_desktop_file(
 
     exec_field = desktop_file.getExec()
     tryexec_field = desktop_file.getTryExec()
+    name_field = desktop_file.getName()
 
-    container_arg = ""
-    if container:
-        container_arg = f"--container {container}"
+    running_container = subprocess.run(['cat', '/run/.containerenv'], capture_output=True, text=True)
+    match = re.search(r'name="([^"]+)"', running_container.stdout)
+    running_container_name = ""
+    if match:
+        running_container_name = match.group(1)
+
+    desktop_file.set("Name", f'{name_field} in ({running_container_name})')
+
+    container_arg = f'--container {running_container_name}'
 
     toolbox_cmds = ["toolbox", "run", container_arg, exec_field]
     toolbox_cmd = " ".join(filter(None, toolbox_cmds))
